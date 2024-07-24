@@ -28,7 +28,9 @@ const fetchImage = catchAsync(async (req, res, next) => {
             })
             .on('response', response => {
                 // Modify the response headers to show the desired URL
-                response.headers['content-disposition'] = `inline; filename="${config.mask}/${imageName}"`;
+                response.headers['Content-Disposition'] = `inline; filename="${config.mask}/${imageName}"`;
+                response.headers['Content-Type'] = 'image/png'; // Adjust according to your image type
+                res.setHeader('Content-Disposition', response.headers['Content-Disposition']);
             })
             .pipe(res);
     } catch (error) {
