@@ -1,6 +1,5 @@
 const express = require('express')
 const helmet = require('helmet')
-const xss = require('xss-clean')
 const cors = require('cors')
 const httpStatus = require('http-status')
 const config = require('./config/config')
@@ -17,15 +16,14 @@ const app = express();
 app.use(morgan.successHandler);
 app.use(morgan.errorHandler);
 
-app.use(helmet());
+// app.use(helmet());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(xss());
 app.use(mongoSanitize())
 
-app.use(compression())
+// app.use(compression())
 
 // enable cors
 app.use(cors());

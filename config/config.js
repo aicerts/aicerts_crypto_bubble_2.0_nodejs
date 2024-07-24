@@ -23,11 +23,7 @@ module.exports = {
   env: envVars.NODE_ENV,
   port: envVars.PORT,
   mongoose: {
-    url: envVars.MONGODB_URL + (envVars.NODE_ENV === 'test' ? '-test' : ''),
-    options: {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    },
+    url: envVars.MONGODB_URL + (envVars.NODE_ENV === 'test' ? '-test' : '')
   },
   source: envVars.SOURCE_URL,
   mask: envVars.MASKING_URL
