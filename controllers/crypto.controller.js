@@ -21,8 +21,6 @@ const fetchImage = catchAsync(async (req, res, next) => {
         const { imageName } = req.params;
         // Replace with the actual URL where the image is hosted
         const imageUrl = `${config.source}/${imageName}`;
-
-        console.log("The redirect", imageUrl);
         request.get(imageUrl)
             .on('error', err => {
                 console.error(`Error fetching image from ${imageUrl}:`, err);
