@@ -8,6 +8,8 @@ const envVarsSchema = Joi.object()
     NODE_ENV: Joi.string().valid('production', 'development', 'test').required(),
     PORT: Joi.number().default(3000),
     MONGODB_URL: Joi.string().required().description('Mongo DB url'),
+    SOURCE_URL: Joi.string().required().description('Source url'),
+    MASKING_URL: Joi.string().required().description('Masking url'),
   })
   .unknown();
 
@@ -27,4 +29,6 @@ module.exports = {
       useUnifiedTopology: true,
     },
   },
+  source: envVars.SOURCE_URL,
+  mask: envVars.MASKING_URL
 };

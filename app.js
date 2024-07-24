@@ -52,9 +52,9 @@ const fetchDataAndSave =  async() => {
         await Crypto.deleteMany({});
 
         await Crypto.insertMany(cryptoData.slice(0,100));
-        console.log('Data saved successfully')
+        console.log('Data saved successfully');
     } catch(error) {
-        console.log('Error fetching data or saving crypto data', error)
+        console.log('Error fetching data or saving crypto data', error);
     }
 };
 
