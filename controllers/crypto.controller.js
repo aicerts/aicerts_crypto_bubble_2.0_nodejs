@@ -17,8 +17,6 @@ const fetchCrypto = catchAsync(async (req, res, next) => {
 });
 
 const fetchImage = catchAsync(async (req, res, next) => {
-    console.log("Envs", config.source, config.mask);
-    console.log("reached");
     try {
         const { imageName } = req.params;
         // Replace with the actual URL where the image is hosted
