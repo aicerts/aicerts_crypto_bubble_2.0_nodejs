@@ -10,6 +10,6 @@ router.get(
   cryptoController.fetchCryptoGraphdata
 );
 
-router.get("/fetch/image/:imageName", cryptoController.fetchCryptoImage);
+router.get("/fetch/image/data/logos/:imageName", cryptoController.fetchCryptoImage);
 
 module.exports = router;
