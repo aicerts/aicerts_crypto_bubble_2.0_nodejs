@@ -12,6 +12,6 @@ const cryptoDataSchema = new mongoose.Schema({
   ],
   fetchedAt: { type: Date, default: Date.now },
 });
-const CryptoGraph = mongoose.model("CryptoData", cryptoDataSchema);
+const CryptoGraph = mongoose.model("CryptoGraph", cryptoDataSchema);
 
 module.exports = CryptoGraph;
