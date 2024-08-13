@@ -1,9 +1,7 @@
 const httpStatus = require("http-status");
-const pick = require("../utils/pick");
 const ApiError = require("../utils/ApiError");
 const catchAsync = require("../utils/catchAsync");
 const cryptoService = require("../services/crypto.service");
-const request = require("request");
 const config = require("../config/config");
 const CryptoGraph = require("../models/cryptoGraphModel");
 const CryptoImage = require("../models/cryptoImageModel");
@@ -55,92 +53,112 @@ const fetchCrypto = catchAsync(async (req, res, next) => {
 //   }
 // });
 const fetchCryptoImage = catchAsync(async (req, res, next) => {
+  const { imageName } = req.params;
+  const imageUrl = `${config.source}/data/logos/${imageName}`;
   try {
-    const { imageName } = req.params;
-    const imageUrl = `${config.source}/data/logos/${imageName}`;
-
     // Check if the image is already in the database
-    let existingImage = await CryptoImage.findOne({ imageName });
+    const existingImage = await CryptoImage.findOne({ imageName }).catch((dbError) => {
+      console.error("Error accessing the database:", dbError);
+      return next(new ApiError("Database access error", 500));
+    });
+
     if (existingImage) {
       res.contentType(existingImage.contentType);
       return res.send(existingImage.imageData);
     }
 
     // Fetch the image from the external source
-    request
-      .get(imageUrl)
-      .on("error", (err) => {
-        console.error(`Error fetching image from ${imageUrl}:`, err);
-        return res
-          .status(404)
-          .json({ status: "FAILED", message: "Failed to fetch image" });
-      })
-      .on("response", async (response) => {
-        console.log(response);
+    let response;
+    try {
+      const fetch = (await import('node-fetch')).default;
+      response = await fetch(imageUrl);
+    } catch (fetchError) {
+      console.error(`Error fetching image from ${imageUrl}:`, fetchError);
+      return res.status(404).json({ status: "FAILED", message: "Failed to fetch image" });
+    }
 
-        let imageData = [];
-        response.on("data", (chunk) => {
-          imageData.push(chunk);
-        });
+    if (!response.ok) {
+      console.error(`Image not found at ${imageUrl}:`, response.statusText);
+      return res.status(404).json({ status: "FAILED", message: "Image not found" });
+    }
 
-        response.on("end", async () => {
-          const buffer = Buffer.concat(imageData);
-          const newImage = await CryptoImage.create({
-            imageName,
-            imageData: buffer,
-            contentType: response.headers["content-type"],
-          });
-          res.contentType(newImage.contentType);
-          res.send(newImage.imageData);
-        });
+    let buffer;
+    try {
+      buffer = Buffer.from(await response.arrayBuffer());
+    } catch (bufferError) {
+      console.error("Error buffering image data:", bufferError);
+      return next(new ApiError("An error occurred while processing the image data", 500));
+    }
+
+    // Save the image to the database
+    try {
+      const newImage = await CryptoImage.create({
+        imageName,
+        imageData: buffer,
+        contentType: response.headers.get("content-type"),
       });
+      res.contentType(newImage.contentType);
+      return res.send(newImage.imageData);
+    } catch (dbSaveError) {
+      console.error("Error saving image to the database:", dbSaveError);
+      return next(new ApiError("An error occurred while saving the image", 500));
+    }
   } catch (error) {
     console.error("Error in fetchCryptoImage:", error);
-    next(new ApiError("An error occurred while processing the image", 500));
+    return next(new ApiError("An error occurred while processing the image", 500));
   }
 });
+
 
 const fetchCryptoGraphdata = catchAsync(async (req, res, next) => {
   try {
     const { timeframe, cryptoId, currency } = req.params;
     const url = `${config.source}/data/charts/${timeframe}/${cryptoId}/${currency}`;
-    request
-      .get(url)
-      .on("error", (err) => {
-        console.error(`Error fetching graph data from ${url}:`, err);
-        return res
-          .status(httpStatus.NOT_FOUND)
-          .json({ status: "FAILED", message: "Failed to fetch graph data" });
-      })
-      .on("response", async (response) => {
-        res.setHeader("Content-Type", "application/json");
 
-        let dataChunks = [];
-        response.on("data", (chunk) => {
-          dataChunks.push(chunk);
-        });
+    let response;
+    try {
+      const fetch = (await import('node-fetch')).default;
+      response = await fetch(url);
+    } catch (fetchError) {
+      console.error(`Error fetching graph data from ${url}:`, fetchError);
+      return next(new ApiError("Failed to fetch graph data", httpStatus.NOT_FOUND));
+    }
 
-        response.on("end", async () => {
-          const data = JSON.parse(Buffer.concat(dataChunks).toString());
+    if (!response.ok) {
+      console.error(`Graph data not found at ${url}:`, response.statusText);
+      return next(new ApiError("Graph data not found", httpStatus.NOT_FOUND));
+    }
 
-          // Upsert data in MongoDB
-          const updatedData = await CryptoGraph.findOneAndUpdate(
-            { timeframe, cryptoId, currency },
-            { data, fetchedAt: new Date() },
-            { new: true, upsert: true } // Create if not exists, return the updated document
-          );
+    let data;
+    try {
+      const responseBody = await response.text();
+      data = JSON.parse(responseBody);
+    } catch (processError) {
+      console.error("Error processing graph data:", processError);
+      return next(new ApiError("Failed to process graph data", httpStatus.INTERNAL_SERVER_ERROR));
+    }
 
-          res.status(200).json(updatedData.data);
-        });
-      });
+    // Upsert data in MongoDB
+    let updatedData;
+    try {
+      updatedData = await CryptoGraph.findOneAndUpdate(
+        { timeframe, cryptoId, currency },
+        { data, fetchedAt: new Date() },
+        { new: true, upsert: true } // Create if not exists, return the updated document
+      );
+    } catch (dbError) {
+      console.error("Error accessing or saving data to the database:", dbError);
+      return next(new ApiError("Database error", httpStatus.INTERNAL_SERVER_ERROR));
+    }
+
+    res.status(httpStatus.OK).json(updatedData.data);
   } catch (error) {
-    next(error);
-    throw new ApiError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      "Failed to fetch or store graph data"
-    );
+    console.error("Error in fetchCryptoGraphdata:", error);
+    next(new ApiError("An error occurred while processing the graph data", httpStatus.INTERNAL_SERVER_ERROR));
   }
 });
+
+
 
 module.exports = {
   fetchCrypto,

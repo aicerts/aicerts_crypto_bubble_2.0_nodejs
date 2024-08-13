@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const app = require("./index");
 const config = require("./config/config");
 const logger = require("./config/logger");
-const axios = require("axios");
 const Crypto = require("./models/cryptoModel");
 const cron = require("node-cron");
 
@@ -40,25 +39,20 @@ const validateCryptoData = (cryptoData) => {
   });
 };
 
-const express = require("express");
-const request = require("request");
-
 // Fetch and save data function
 const fetchDataAndSave = async () => {
   try {
-    const response = await axios.get(
-      "https://cryptobubbles.net/backend/data/bubbles1000.usd.json"
-    );
-    cryptoData = response.data;
+    const fetch = (await import('node-fetch')).default;
+    const response = await fetch(`${config.source}/data/bubbles1000.usd.json`);
+    const cryptoData = await response.json();
 
-    cryptoData = validateCryptoData(cryptoData);
+    const validatedData = validateCryptoData(cryptoData);
 
     await Crypto.deleteMany({});
-
-    await Crypto.insertMany(cryptoData.slice(0, 100));
+    await Crypto.insertMany(validatedData.slice(0, 100));
     console.log("Data saved successfully");
   } catch (error) {
-    console.log("Error fetching data or saving crypto data", error);
+    console.error("Error fetching data or saving crypto data", error);
   }
 };
 
