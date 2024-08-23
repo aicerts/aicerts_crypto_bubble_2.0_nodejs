@@ -50,7 +50,9 @@ const fetchDataAndSave = async () => {
 
     const validatedData = validateCryptoData(cryptoData);
     try {
-      await retryOperation(()=>redisClient.set('cryptoData', JSON.stringify(validatedData.slice(0, 100))), 3,2000)
+      const retryCount = 3
+      const delay = 2000
+      await retryOperation(()=>redisClient.set('cryptoData', JSON.stringify(validatedData.slice(0, 100))), retryCount,delay)
       console.log("Data saved successfully in Redis");
     } catch (redisError) {
       console.error("Error saving data to Redis", redisError);

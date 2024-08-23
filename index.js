@@ -27,6 +27,10 @@ app.use(mongoSanitize());
 // enable cors
 app.use(cors());
 app.options("*", cors());
+// Health check route
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "Healthy", message: "Server is running properly." });
+  });
 // v1 api routes
 app.use("/v1", routes);
 
