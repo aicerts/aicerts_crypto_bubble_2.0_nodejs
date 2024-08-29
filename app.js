@@ -4,6 +4,8 @@ const config = require("./config/config");
 const logger = require("./config/logger");
 const Crypto = require("./models/cryptoModel");
 const cron = require("node-cron");
+const redisClient = require("./config/redisConfig")
+const retryOperation = require("./utils/retryOperation")
 
 const validateCryptoData = (cryptoData) => {
   return cryptoData.map((data) => {
@@ -47,9 +49,21 @@ const fetchDataAndSave = async () => {
     const cryptoData = await response.json();
 
     const validatedData = validateCryptoData(cryptoData);
-
-    await Crypto.deleteMany({});
-    await Crypto.insertMany(validatedData.slice(0, 100));
+    try {
+      const retryCount = 3
+      const delay = 2000
+      await retryOperation(()=>redisClient.set('cryptoData', JSON.stringify(validatedData.slice(0, 100))), retryCount,delay)
+      console.log("Data saved successfully in Redis");
+    } catch (redisError) {
+      console.error("Error saving data to Redis", redisError);
+      try {
+        await Crypto.deleteMany({});
+        await Crypto.insertMany(validatedData.slice(0, 100));
+        await redisClient.del('cryptoData'); 
+      } catch (delError) {
+        console.error("Error deleting stale data from Redis", delError);
+      } 
+    }
     console.log("Data saved successfully");
   } catch (error) {
     console.error("Error fetching data or saving crypto data", error);

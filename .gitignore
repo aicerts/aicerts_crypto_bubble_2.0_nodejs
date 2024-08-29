@@ -24,3 +24,5 @@ TestResults.xml
 node_modules
 #env file
 .env
+#package-lock.json
+package-lock

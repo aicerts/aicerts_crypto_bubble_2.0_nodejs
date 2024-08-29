@@ -5,9 +5,14 @@ const cryptoService = require("../services/crypto.service");
 const config = require("../config/config");
 const CryptoGraph = require("../models/cryptoGraphModel");
 const CryptoImage = require("../models/cryptoImageModel");
+const redisClient = require("../config/redisConfig.js")
 
 const fetchCrypto = catchAsync(async (req, res, next) => {
   try {
+    const cachedData = await redisClient.get('cryptoData');
+    if (cachedData) {
+      return res.status(200).send(JSON.parse(cachedData));
+    }
     const result = await cryptoService.fetchCrypto();
     res.status(200).send(result);
   } catch (error) {

@@ -9,7 +9,7 @@ const envVarsSchema = Joi.object()
     PORT: Joi.number().default(3000),
     MONGODB_URL: Joi.string().required().description('Mongo DB url'),
     SOURCE_URL: Joi.string().required().description('Source url'),
-    // MASKING_URL: Joi.string().required().description('Masking url'),
+    REDIS_URL: Joi.string().required().description('Redis url'),
   })
   .unknown();
 
@@ -26,5 +26,8 @@ module.exports = {
     url: envVars.MONGODB_URL + (envVars.NODE_ENV === 'test' ? '-test' : '')
   },
   source: envVars.SOURCE_URL,
+  redis:{
+    url: envVars.REDIS_URL
+  }
   // mask: envVars.MASKING_URL
 };
