@@ -9,6 +9,7 @@ const redisClient = require("../config/redisConfig.js")
 
 const fetchCrypto = catchAsync(async (req, res, next) => {
   try {
+  
     const cachedData = await redisClient.get('cryptoData');
     if (cachedData) {
       return res.status(200).send(JSON.parse(cachedData));

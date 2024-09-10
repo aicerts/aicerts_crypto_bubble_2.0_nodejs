@@ -49,14 +49,22 @@ const fetchDataAndSave = async () => {
     const cryptoData = await response.json();
 
     const validatedData = validateCryptoData(cryptoData);
+    console.log(validatedData.slice(0,5))
     try {
       const retryCount = 3
       const delay = 2000
-      await retryOperation(()=>redisClient.set('cryptoData', JSON.stringify(validatedData.slice(0, 100))), retryCount,delay)
-      console.log("Data saved successfully in Redis");
+      if(redisClient.isOpen){
+        await retryOperation(()=>redisClient.set('cryptoData', JSON.stringify(validatedData.slice(0, 100))), retryCount,delay)
+        console.log("Data saved successfully in Redis");
+
+      }else{
+        throw new Error("Redis connection is not open, falling back to MongoDB");
+      }
+     
     } catch (redisError) {
       console.error("Error saving data to Redis", redisError);
       try {
+      
         await Crypto.deleteMany({});
         await Crypto.insertMany(validatedData.slice(0, 100));
         await redisClient.del('cryptoData'); 

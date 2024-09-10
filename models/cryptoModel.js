@@ -18,7 +18,7 @@ const cryptoSchema = new Schema({
     },
     image: { type: String, required: true },
     stable: { type: Boolean, required: true },
-    circulating_supply: { type: Number, required: true },
+    // circulating_supply: { type: Number, required: true },
     dominance: { type: Number, required: true },
     rankDiffs: {
         hour: { type: Number, required: true },
