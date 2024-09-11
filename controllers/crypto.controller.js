@@ -5,17 +5,25 @@ const cryptoService = require("../services/crypto.service");
 const config = require("../config/config");
 const CryptoGraph = require("../models/cryptoGraphModel");
 const CryptoImage = require("../models/cryptoImageModel");
-const redisClient = require("../config/redisConfig.js")
+const redisClient = require("../config/redisConfig.js");
 
 const fetchCrypto = catchAsync(async (req, res, next) => {
   try {
-  
-    const cachedData = await redisClient.get('cryptoData');
-    if (cachedData) {
-      return res.status(200).send(JSON.parse(cachedData));
+    if (redisClient.isReady) {
+      const cachedData = await redisClient.get("cryptoData");
+      if (cachedData) {
+        console.log("crypto data response from redis")
+        return res.status(200).send(JSON.parse(cachedData));
+      } else {
+        console.log("crypto data response from db")
+        const result = await cryptoService.fetchCrypto();
+        res.status(200).send(result);
+      }
+    } else {
+      const result = await cryptoService.fetchCrypto();
+      console.log("crypto data response from db")
+      res.status(200).send(result);
     }
-    const result = await cryptoService.fetchCrypto();
-    res.status(200).send(result);
   } catch (error) {
     next(error);
     throw new ApiError(
@@ -63,10 +71,12 @@ const fetchCryptoImage = catchAsync(async (req, res, next) => {
   const imageUrl = `${config.source}/data/logos/${imageName}`;
   try {
     // Check if the image is already in the database
-    const existingImage = await CryptoImage.findOne({ imageName }).catch((dbError) => {
-      console.error("Error accessing the database:", dbError);
-      return next(new ApiError("Database access error", 500));
-    });
+    const existingImage = await CryptoImage.findOne({ imageName }).catch(
+      (dbError) => {
+        console.error("Error accessing the database:", dbError);
+        return next(new ApiError("Database access error", 500));
+      }
+    );
 
     if (existingImage) {
       res.contentType(existingImage.contentType);
@@ -76,16 +86,20 @@ const fetchCryptoImage = catchAsync(async (req, res, next) => {
     // Fetch the image from the external source
     let response;
     try {
-      const fetch = (await import('node-fetch')).default;
+      const fetch = (await import("node-fetch")).default;
       response = await fetch(imageUrl);
     } catch (fetchError) {
       console.error(`Error fetching image from ${imageUrl}:`, fetchError);
-      return res.status(404).json({ status: "FAILED", message: "Failed to fetch image" });
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Failed to fetch image" });
     }
 
     if (!response.ok) {
       console.error(`Image not found at ${imageUrl}:`, response.statusText);
-      return res.status(404).json({ status: "FAILED", message: "Image not found" });
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Image not found" });
     }
 
     let buffer;
@@ -93,7 +107,9 @@ const fetchCryptoImage = catchAsync(async (req, res, next) => {
       buffer = Buffer.from(await response.arrayBuffer());
     } catch (bufferError) {
       console.error("Error buffering image data:", bufferError);
-      return next(new ApiError("An error occurred while processing the image data", 500));
+      return next(
+        new ApiError("An error occurred while processing the image data", 500)
+      );
     }
 
     // Save the image to the database
@@ -107,14 +123,17 @@ const fetchCryptoImage = catchAsync(async (req, res, next) => {
       return res.send(newImage.imageData);
     } catch (dbSaveError) {
       console.error("Error saving image to the database:", dbSaveError);
-      return next(new ApiError("An error occurred while saving the image", 500));
+      return next(
+        new ApiError("An error occurred while saving the image", 500)
+      );
     }
   } catch (error) {
     console.error("Error in fetchCryptoImage:", error);
-    return next(new ApiError("An error occurred while processing the image", 500));
+    return next(
+      new ApiError("An error occurred while processing the image", 500)
+    );
   }
 });
-
 
 const fetchCryptoGraphdata = catchAsync(async (req, res, next) => {
   try {
@@ -123,11 +142,13 @@ const fetchCryptoGraphdata = catchAsync(async (req, res, next) => {
 
     let response;
     try {
-      const fetch = (await import('node-fetch')).default;
+      const fetch = (await import("node-fetch")).default;
       response = await fetch(url);
     } catch (fetchError) {
       console.error(`Error fetching graph data from ${url}:`, fetchError);
-      return next(new ApiError("Failed to fetch graph data", httpStatus.NOT_FOUND));
+      return next(
+        new ApiError("Failed to fetch graph data", httpStatus.NOT_FOUND)
+      );
     }
 
     if (!response.ok) {
@@ -141,7 +162,12 @@ const fetchCryptoGraphdata = catchAsync(async (req, res, next) => {
       data = JSON.parse(responseBody);
     } catch (processError) {
       console.error("Error processing graph data:", processError);
-      return next(new ApiError("Failed to process graph data", httpStatus.INTERNAL_SERVER_ERROR));
+      return next(
+        new ApiError(
+          "Failed to process graph data",
+          httpStatus.INTERNAL_SERVER_ERROR
+        )
+      );
     }
 
     // Upsert data in MongoDB
@@ -154,17 +180,22 @@ const fetchCryptoGraphdata = catchAsync(async (req, res, next) => {
       );
     } catch (dbError) {
       console.error("Error accessing or saving data to the database:", dbError);
-      return next(new ApiError("Database error", httpStatus.INTERNAL_SERVER_ERROR));
+      return next(
+        new ApiError("Database error", httpStatus.INTERNAL_SERVER_ERROR)
+      );
     }
 
     res.status(httpStatus.OK).json(updatedData.data);
   } catch (error) {
     console.error("Error in fetchCryptoGraphdata:", error);
-    next(new ApiError("An error occurred while processing the graph data", httpStatus.INTERNAL_SERVER_ERROR));
+    next(
+      new ApiError(
+        "An error occurred while processing the graph data",
+        httpStatus.INTERNAL_SERVER_ERROR
+      )
+    );
   }
 });
-
-
 
 module.exports = {
   fetchCrypto,

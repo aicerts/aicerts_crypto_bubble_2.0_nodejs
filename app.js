@@ -49,11 +49,10 @@ const fetchDataAndSave = async () => {
     const cryptoData = await response.json();
 
     const validatedData = validateCryptoData(cryptoData);
-    console.log(validatedData.slice(0,5))
     try {
       const retryCount = 3
       const delay = 2000
-      if(redisClient.isOpen){
+      if(redisClient.isReady){
         await retryOperation(()=>redisClient.set('cryptoData', JSON.stringify(validatedData.slice(0, 100))), retryCount,delay)
         console.log("Data saved successfully in Redis");
 
@@ -67,12 +66,12 @@ const fetchDataAndSave = async () => {
       
         await Crypto.deleteMany({});
         await Crypto.insertMany(validatedData.slice(0, 100));
-        await redisClient.del('cryptoData'); 
+        console.log("Data saved successfully in db");
       } catch (delError) {
         console.error("Error deleting stale data from Redis", delError);
       } 
     }
-    console.log("Data saved successfully");
+   
   } catch (error) {
     console.error("Error fetching data or saving crypto data", error);
   }
