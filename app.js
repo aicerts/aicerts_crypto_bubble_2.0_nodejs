@@ -63,7 +63,6 @@ const fetchDataAndSave = async () => {
     } catch (redisError) {
       console.error("Error saving data to Redis", redisError);
       try {
-      
         await Crypto.deleteMany({});
         await Crypto.insertMany(validatedData.slice(0, 100));
         console.log("Data saved successfully in db");

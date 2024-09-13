@@ -197,8 +197,58 @@ const fetchCryptoGraphdata = catchAsync(async (req, res, next) => {
   }
 });
 
+const fetchNewsWithOriginalUrl = async (req, res) => {
+  try {
+    const { symbol } = req.params;
+
+    if (!symbol || symbol === "undefined") {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Crypto symbol required in params",
+      });
+    }
+
+    const news_url = `${config.crypto_news_url}currencies=${symbol}&public=true`;
+    const fetch = (await import("node-fetch")).default;
+    const response = await fetch(news_url);
+    const result = await response.json();  // Entire result object
+    
+    const urls = result.results.map((newsItem) => newsItem.url);
+    
+    // Generate the original URLs using your service
+    const originalUrls = await cryptoService.genrateOriginalUrls(urls);
+    
+    // Replace only the URLs in result.results
+    result.results = result.results.map((newsItem, index) => {
+      const originalUrl = originalUrls[index];
+      if (originalUrl) {
+        return {
+          ...newsItem,
+          url: originalUrl, // Replace with original URL if available
+        };
+      }
+      return newsItem; // Keep the original newsItem if no original URL
+    });
+
+    // Send the entire result object with modified URLs
+    res.status(200).json({
+      status: "SUCCESS",
+      data: result, // Send the modified result object
+    });
+
+  } catch (error) {
+    console.error("Error in fetchNewsWithOriginalUrl:", error);
+    res.status(500).json({
+      status: "FAILED",
+      message: "An error occurred while processing the news data.",
+    });
+  }
+};
+
+
 module.exports = {
   fetchCrypto,
   fetchCryptoGraphdata,
   fetchCryptoImage,
+  fetchNewsWithOriginalUrl
 };
