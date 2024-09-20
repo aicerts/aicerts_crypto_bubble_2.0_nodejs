@@ -6,6 +6,7 @@ const config = require("../config/config");
 const CryptoGraph = require("../models/cryptoGraphModel");
 const CryptoImage = require("../models/cryptoImageModel");
 const redisClient = require("../config/redisConfig.js");
+const  {promisify} = require("util")
 
 const fetchCrypto = catchAsync(async (req, res, next) => {
   try {
@@ -66,74 +67,84 @@ const fetchCrypto = catchAsync(async (req, res, next) => {
 //     );
 //   }
 // });
+// Promisify Redis methods
+const getAsync = promisify(redisClient.get).bind(redisClient);
+const setAsync = promisify(redisClient.set).bind(redisClient);
+
 const fetchCryptoImage = catchAsync(async (req, res, next) => {
   const { imageName } = req.params;
   const imageUrl = `${config.source}/data/logos/${imageName}`;
+
   try {
-    // Check if the image is already in the database
-    const existingImage = await CryptoImage.findOne({ imageName }).catch(
-      (dbError) => {
-        console.error("Error accessing the database:", dbError);
-        return next(new ApiError("Database access error", 500));
+    // Check Redis cache first
+    if (redisClient.isReady) {
+      const cachedImage = await redisClient.get(imageName);
+      if (cachedImage) {
+        console.log("Image response from Redis");
+        const parsedImage = JSON.parse(cachedImage);
+        console.log(parsedImage)
+        res.contentType(parsedImage.contentType);
+        return res.send(Buffer.from(parsedImage.imageData, 'base64'));
       }
-    );
+    }
+
+    // Check if the image is already in the database
+    const existingImage = await CryptoImage.findOne({ imageName }).exec();
 
     if (existingImage) {
+      // Save image to Redis cache
+      if (redisClient.isReady) {
+        const imageDataToCache = {
+          contentType: existingImage.contentType,
+          imageData: existingImage.imageData.toString('base64')
+        };
+        await redisClient.set(imageName, JSON.stringify(imageDataToCache));
+        console.log("Image cached in Redis");
+      }
+      console.log(existingImage.imageData)
+
       res.contentType(existingImage.contentType);
       return res.send(existingImage.imageData);
     }
 
     // Fetch the image from the external source
-    let response;
-    try {
-      const fetch = (await import("node-fetch")).default;
-      response = await fetch(imageUrl);
-    } catch (fetchError) {
-      console.error(`Error fetching image from ${imageUrl}:`, fetchError);
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Failed to fetch image" });
-    }
+    const fetch = (await import("node-fetch")).default;
+    const response = await fetch(imageUrl);
 
     if (!response.ok) {
-      console.error(`Image not found at ${imageUrl}:`, response.statusText);
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Image not found" });
+      return res.status(404).json({ status: "FAILED", message: "Image not found" });
     }
 
-    let buffer;
-    try {
-      buffer = Buffer.from(await response.arrayBuffer());
-    } catch (bufferError) {
-      console.error("Error buffering image data:", bufferError);
-      return next(
-        new ApiError("An error occurred while processing the image data", 500)
-      );
-    }
+    // Read the image data
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const contentType = response.headers.get("content-type");
 
     // Save the image to the database
-    try {
-      const newImage = await CryptoImage.create({
-        imageName,
-        imageData: buffer,
-        contentType: response.headers.get("content-type"),
-      });
-      res.contentType(newImage.contentType);
-      return res.send(newImage.imageData);
-    } catch (dbSaveError) {
-      console.error("Error saving image to the database:", dbSaveError);
-      return next(
-        new ApiError("An error occurred while saving the image", 500)
-      );
+    const newImage = await CryptoImage.create({
+      imageName,
+      imageData: buffer,
+      contentType
+    });
+
+    // Save image to Redis cache
+    if (redisClient.isReady) {
+      const imageDataToCache = {
+        contentType: newImage.contentType,
+        imageData: newImage.imageData.toString('base64')
+      };
+      await redisClient.set(imageName, JSON.stringify(imageDataToCache));
+      console.log("Image cached in Redis");
     }
+
+    res.contentType(newImage.contentType);
+    return res.send(newImage.imageData);
+
   } catch (error) {
     console.error("Error in fetchCryptoImage:", error);
-    return next(
-      new ApiError("An error occurred while processing the image", 500)
-    );
+    return next(new ApiError("An error occurred while processing the image", 500));
   }
 });
+
 
 const fetchCryptoGraphdata = catchAsync(async (req, res, next) => {
   try {
