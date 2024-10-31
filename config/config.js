@@ -10,7 +10,8 @@ const envVarsSchema = Joi.object()
     MONGODB_URL: Joi.string().required().description('Mongo DB url'),
     SOURCE_URL: Joi.string().required().description('Source url'),
     REDIS_URL: Joi.string().required().description('Redis url'),
-    CRYPTO_NEWS_URL: Joi.string().required().description("Crypto news url")
+    CRYPTO_NEWS_URL: Joi.string().required().description("Crypto news url"),
+    AI_IMAGE_URL:Joi.string().required().description("Ai image url")
   })
   .unknown();
 
@@ -30,6 +31,7 @@ module.exports = {
   redis:{
     url: envVars.REDIS_URL
   },
-  crypto_news_url:envVars.CRYPTO_NEWS_URL
+  crypto_news_url:envVars.CRYPTO_NEWS_URL,
   // mask: envVars.MASKING_URL
+  ai_image_url:envVars.AI_IMAGE_URL
 };

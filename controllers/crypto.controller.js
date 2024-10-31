@@ -146,6 +146,82 @@ const fetchCryptoImage = catchAsync(async (req, res, next) => {
 });
 
 
+const fetchAiImage = catchAsync(async (req, res, next) => {
+  
+  const { imageName } = req.params;
+  const imageUrl = `${config.ai_image_url}${imageName}.jpeg`;
+
+  try {
+    // Check Redis cache first
+    if (redisClient.isReady) {
+      const cachedImage = await redisClient.get(imageName);
+      if (cachedImage) {
+        console.log("Image response from Redis");
+        const parsedImage = JSON.parse(cachedImage);
+        console.log(parsedImage)
+        res.contentType(parsedImage.contentType);
+        return res.send(Buffer.from(parsedImage.imageData, 'base64'));
+      }
+    }
+
+    // Check if the image is already in the database
+    const existingImage = await CryptoImage.findOne({ imageName }).exec();
+
+    if (existingImage) {
+      // Save image to Redis cache
+      if (redisClient.isReady) {
+        const imageDataToCache = {
+          contentType: existingImage.contentType,
+          imageData: existingImage.imageData.toString('base64')
+        };
+        await redisClient.set(imageName, JSON.stringify(imageDataToCache));
+        console.log("Image cached in Redis");
+      }
+      console.log(existingImage.imageData)
+
+      res.contentType(existingImage.contentType);
+      return res.send(existingImage.imageData);
+    }
+
+    // Fetch the image from the external source
+    const fetch = (await import("node-fetch")).default;
+    const response = await fetch(imageUrl);
+
+    if (!response.ok) {
+      return res.status(404).json({ status: "FAILED", message: "Image not found" });
+    }
+
+    // Read the image data
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const contentType = response.headers.get("content-type");
+
+    // Save the image to the database
+    const newImage = await CryptoImage.create({
+      imageName,
+      imageData: buffer,
+      contentType
+    });
+
+    // Save image to Redis cache
+    if (redisClient.isReady) {
+      const imageDataToCache = {
+        contentType: newImage.contentType,
+        imageData: newImage.imageData.toString('base64')
+      };
+      await redisClient.set(imageName, JSON.stringify(imageDataToCache));
+      console.log("Image cached in Redis");
+    }
+
+    res.contentType(newImage.contentType);
+    return res.send(newImage.imageData);
+
+  } catch (error) {
+    console.error("Error in fetchCryptoImage:", error);
+    return next(new ApiError("An error occurred while processing the image", 500));
+  }
+});
+
+
 const fetchCryptoGraphdata = catchAsync(async (req, res, next) => {
   try {
     const { timeframe, cryptoId, currency } = req.params;
@@ -257,9 +333,81 @@ const fetchNewsWithOriginalUrl = async (req, res) => {
 };
 
 
+const fetchPerformanceData= async (req, res) => {
+  const { symbol } = req.params;
+
+  const url = `https://api.marketstack.com/v1/eod?access_key=b242b15c327b3332565729379530467d&symbols=${symbol}&limit=365`;
+  
+  try {
+    const fetch = (await import("node-fetch")).default;
+      const response = await fetch(url)
+      const {data} = await response.json()
+      console.log(data)
+
+      if (data.length === 0) {
+          return res.status(404).json({ message: "No data found for the given symbol." });
+      }
+
+      // Calculate performance
+      const latestEODPrice = data[0].close;
+      const latestVolume = data[0].volume;
+
+      const lastClose = data[0].close;
+
+      let initialPriceDay = null, initialPriceWeek = null, initialPriceMonth = null, initialPriceYear = null;
+      const todayUTC = new Date();
+      const weekAgoUTC = new Date(todayUTC.getTime());
+      weekAgoUTC.setUTCDate(todayUTC.getUTCDate() - 7);
+      const monthAgoUTC = new Date(todayUTC.getTime());
+      monthAgoUTC.setUTCMonth(todayUTC.getUTCMonth() - 1);
+      const yearAgoUTC = new Date(todayUTC.getTime());
+      yearAgoUTC.setUTCFullYear(todayUTC.getFullYear() - 1);
+
+      for (let i = 1; i < data.length; i++) {
+          const entryDateUTC = new Date(data[i].date);
+          
+          if (!initialPriceDay && entryDateUTC < todayUTC) {
+              initialPriceDay = data[i].close;
+          }
+          if (!initialPriceWeek && entryDateUTC <= weekAgoUTC) {
+              initialPriceWeek = data[i].close;
+          }
+          if (!initialPriceMonth && entryDateUTC <= monthAgoUTC) {
+              initialPriceMonth = data[i].close;
+          }
+          if (!initialPriceYear && entryDateUTC <= yearAgoUTC) {
+              initialPriceYear = data[i].close;
+          }
+
+          if (initialPriceDay && initialPriceWeek && initialPriceMonth && initialPriceYear) break;
+      }
+
+      const performance = {
+          day: initialPriceDay ? ((lastClose - initialPriceDay) / initialPriceDay) * 100 : null,
+          week: initialPriceWeek ? ((lastClose - initialPriceWeek) / initialPriceWeek) * 100 : null,
+          month: initialPriceMonth ? ((lastClose - initialPriceMonth) / initialPriceMonth) * 100 : null,
+          year: initialPriceYear ? ((lastClose - initialPriceYear) / initialPriceYear) * 100 : null,
+      };
+
+      return res.json({
+          symbol: symbol,
+          performance: performance,
+          price: latestEODPrice,
+          volume:latestVolume
+      });
+  } catch (error) {
+      console.error('Error fetching performance data:', error);
+      return res.status(500).json({ message: 'Failed to fetch performance data.' });
+  }
+}
+
+
+
 module.exports = {
   fetchCrypto,
   fetchCryptoGraphdata,
   fetchCryptoImage,
-  fetchNewsWithOriginalUrl
+  fetchNewsWithOriginalUrl,
+  fetchAiImage,
+  fetchPerformanceData
 };

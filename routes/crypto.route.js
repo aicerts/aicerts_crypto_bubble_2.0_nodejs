@@ -11,5 +11,9 @@ router.get(
 
 router.get("/fetch/image/data/logos/:imageName", cryptoController.fetchCryptoImage);
 router.get("/fetch/news/:symbol", cryptoController.fetchNewsWithOriginalUrl)
+router.get("/fetch/aiimage/:imageName", cryptoController.fetchAiImage);
+
+
+router.get("/fetch/performance/:symbol", cryptoController.fetchPerformanceData);
 
 module.exports = router;
