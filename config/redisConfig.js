@@ -2,8 +2,8 @@ const redis = require("redis")
 const config = require("./config")
 
 const client = redis.createClient({
-    // url: config.redis.url
-    url:'redis://localhost:6380'
+    url: config.redis.url
+    // url:'redis://localhost:6380'
     
 })
 
