@@ -106,6 +106,7 @@ const verifyOtp = async (req, res, next) => {
     res.status(httpStatus.CREATED).json({
       message: "User registered successfully",
       token,
+      userEmail:email
     });
   } catch (error) {
     console.error("Error in verifyOtp:", error);
@@ -210,6 +211,7 @@ const login = catchAsync(async (req, res, next) => {
     res.status(httpStatus.OK).json({
       message: "Login successful",
       token,
+      userEmail:email
     });
   } catch (error) {
     console.error("Error in login:", error);
