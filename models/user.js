@@ -1,6 +1,5 @@
 // models/User.js
 
-const { required } = require('joi');
 const mongoose = require('mongoose');
 
 const watchlistSchema = new mongoose.Schema({
