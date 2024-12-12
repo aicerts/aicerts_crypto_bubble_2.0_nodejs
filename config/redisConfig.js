@@ -7,7 +7,7 @@ const client = redis.createClient({
 });
 
 client.on('error', (err) => {
-  console.error("Error while connecting to Redis server", err);
+  // console.error("Error while connecting to Redis server", err);
 });
 
 client.connect();

@@ -6,7 +6,7 @@ const sendEmail = require("../services/sendMail");
 const bcrypt = require("bcrypt");
 const catchAsync = require("../utils/catchAsync");
 const jwt = require("jsonwebtoken")
-const crypto = require("crypto")
+const crypto = require("crypto");
 
 const signup = catchAsync(async (req, res, next) => {
   try {
@@ -63,7 +63,7 @@ const verifyOtp = async (req, res, next) => {
 
     // Find OTP record
     const otpRecord = await Otp.findOne({ email });
-    console.log("otp record is", otpRecord)
+
     if (!otpRecord) {
       return next(
         new ApiError(
@@ -123,7 +123,6 @@ const verifyOtp = async (req, res, next) => {
 const setPassword = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log(email, password);
 
     // Validate password
     if (!password || password.length < 6) {
@@ -278,7 +277,7 @@ const resetPassword = catchAsync(async (req, res, next) => {
     }
 
     // Find the reset token record in the database
-    const resetRecord = await Otp.findOne({ email, resetToken: token });
+    const resetRecord = await Otp.findOne({ email, resetToken: token }); 
     console.log(resetRecord)
     if (!resetRecord) {
       return next(
@@ -317,12 +316,65 @@ const resetPassword = catchAsync(async (req, res, next) => {
   }
 });
 
+const changePassword = catchAsync(async (req, res, next) => {
+  try {
+    const { email, currentPassword, newPassword } = req.body;
+
+    // Validate input fields
+    if (!email || !newPassword) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        message: "Email and new password are required",
+      });
+    }
+
+    if (!currentPassword) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        message: "current password is required",
+      });
+    }
+
+    // Find the user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "User not found",
+      });
+    }
+
+      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isPasswordValid) {
+        return res.status(httpStatus.UNAUTHORIZED).json({
+          message: "Current password is incorrect",
+        });
+      }
+    
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update the user's password
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(httpStatus.OK).json({
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    console.error("Error in changePassword:", error);
+    return next(
+      new ApiError("An error occurred while changing the password", httpStatus.INTERNAL_SERVER_ERROR)
+    );
+  }
+});
+
+
 module.exports = {
     verifyOtp,
     signup, 
     setPassword,
     login,
     resetPassword,
-    forgotPassword
+    forgotPassword,
+    changePassword
     
 }
