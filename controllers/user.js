@@ -367,6 +367,43 @@ const changePassword = catchAsync(async (req, res, next) => {
   }
 });
 
+const logoutHandler = (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store'); // Prevent caching for this route
+
+  req.logOut(err => {
+    if (err) {
+      return next({
+        status: 500,
+        message: "Logout failed",
+        details: err.message,
+      });
+    }
+
+    req.session.destroy(err => {
+      if (err) {
+        return next({
+          status: 500,
+          message: "Session destruction failed",
+          details: err.message,
+        });
+      }
+
+      // Clear the cookie
+      res.clearCookie("connect.sid", { path: '/', httpOnly: true, secure: true, sameSite: 'lax' });
+
+      res.status(200).json({
+        status: 200,
+        success: true,
+        message: "User logged out successfully.",
+        details: null,
+      });
+    });
+  });
+};
+
+module.exports = logoutHandler;
+
+
 
 module.exports = {
     verifyOtp,
@@ -375,6 +412,7 @@ module.exports = {
     login,
     resetPassword,
     forgotPassword,
-    changePassword
+    changePassword,
+    logoutHandler
     
 }

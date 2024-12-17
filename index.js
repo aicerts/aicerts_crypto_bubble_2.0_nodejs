@@ -28,17 +28,17 @@ app.use(morgan.errorHandler);
 
 // passport.use(linkedinStrategy);
 
-// app.use(session({
-//   secret: process.env.SESSION_SECRET || 'default_secret', // Provide a fallback value if SESSION_SECRET is undefined
-//   resave: false,
-//   saveUninitialized: false,
-//   cookie: {
-//     secure: process.env.NODE_ENV === 'production', // Send cookie only over HTTPS in production
-//     httpOnly: true, // Prevent client-side access to the cookie
-//     sameSite: 'lax', // Use 'lax' or 'none' depending on your app's requirements
-//     maxAge: 1000 * 60 * 60 * 24, // Cookie expiry time
-//   },
-// }));
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'default_secret', // Provide a fallback value if SESSION_SECRET is undefined
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Send cookie only over HTTPS in production
+    httpOnly: true, // Prevent client-side access to the cookie
+    sameSite: 'lax', // Use 'lax' or 'none' depending on your app's requirements
+    maxAge: 1000 * 60 * 60 * 24, // Cookie expiry time
+  },
+}));
 
 
 
@@ -61,12 +61,12 @@ app.get("/health", (req, res) => {
     res.status(200).json({ status: "Healthy", message: "Server is running properly." });
   });
 
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false } // For development, set `secure` to false, but set to true in production with HTTPS
-  }));
+  // app.use(session({
+  //   secret: process.env.SESSION_SECRET || 'your-secret-key',
+  //   resave: false,
+  //   saveUninitialized: true,
+  //   cookie: { secure: false } // For development, set `secure` to false, but set to true in production with HTTPS
+  // }));
 
 
 

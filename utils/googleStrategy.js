@@ -17,6 +17,7 @@ const googleStrategy = new GoogleStrategy(
     callbackURL: process.env.GOOGLE_CALLBACK_URL,
     scope: ["profile", "email"],
     passReqToCallback: true,
+    
   },
   async (req, accessToken, refreshToken, profile, done) => {
     const sourceApp = typeof req.query.state === 'string' ? req.query.state : "source app not provided"; // Use "default" if undefined
@@ -72,6 +73,7 @@ const googleAuth = (req, res, next) => {
   passport.authenticate("google", {
     scope: ["profile", "email"],
     state: sourceApp, // Pass sourceApp via the state parameter
+    prompt: 'select_account'
   })(req, res, next);
 };
 

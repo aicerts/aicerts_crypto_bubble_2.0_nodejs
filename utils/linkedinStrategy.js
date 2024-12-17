@@ -16,6 +16,7 @@ const linkedinAuth = (req, res, next) => {
   passport.authenticate('linkedin', {
     state: sourceApp,  // Optional, can be used for CSRF protection
     scope: ['openid', 'profile', 'email'],
+    prompt: 'select_account'
   })(req, res, next);
 };
 
