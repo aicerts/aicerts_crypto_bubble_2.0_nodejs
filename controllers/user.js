@@ -22,9 +22,13 @@ const signup = catchAsync(async (req, res, next) => {
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        message: "User already exists",
-      });
+      if (!existingUser.isAccountDeactivate) {
+        // Account is active, reject signup
+        return res.status(httpStatus.BAD_REQUEST).json({
+          message: "User already exists",
+        });
+      } 
+     
     }
 
     // Generate OTP and expiration time
@@ -85,29 +89,57 @@ const verifyOtp = async (req, res, next) => {
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
+    const existingAccount = await User.findOne({email})
+    let token
+
+    if(existingAccount){
+      existingAccount.password = hashedPassword,
+      existingAccount.isAccountDeactivate=false
+
+      await existingAccount.save()
+      token = jwt.sign(
+        { email: existingAccount.email, id: existingAccount._id },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+      );
+
+      res.status(httpStatus.OK).json({
+        message: "Account reactivated successfully",
+        token,
+        userEmail: email,
+      });
+
+
+
+    }else{
+      const newUser = new User({
+        firstname,
+        lastname,
+        email,
+        password: hashedPassword,
+        isAccountDeactivate:false
+      });
+  
+      await newUser.save();
+      const token = jwt.sign(
+        { email: newUser.email, id: newUser._id },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+      );
+  
+      res.status(httpStatus.CREATED).json({
+        message: "User registered successfully",
+        token,
+        userEmail:email
+      });
+
+    }
 
     // Create user in the database
-    const newUser = new User({
-      firstname,
-      lastname,
-      email,
-      password: hashedPassword,
-    });
-
-    await newUser.save();
+    
 
     // Generate JWT token
-    const token = jwt.sign(
-      { email: newUser.email, id: newUser._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    res.status(httpStatus.CREATED).json({
-      message: "User registered successfully",
-      token,
-      userEmail:email
-    });
+    
   } catch (error) {
     console.error("Error in verifyOtp:", error);
     return next(
@@ -185,6 +217,14 @@ const login = catchAsync(async (req, res, next) => {
 
     // Check if user exists
     const user = await User.findOne({ email });
+    if(user.isAccountDeactivate){
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "User not found",
+        
+      })
+    }
+
+
     if (!user) {
       return res.status(httpStatus.NOT_FOUND).json({
         message: "User not found",
@@ -401,7 +441,40 @@ const logoutHandler = (req, res, next) => {
   });
 };
 
-module.exports = logoutHandler;
+const deactivateAccount = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    // Validate email
+    if (!email) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        message: "Email is required",
+      });
+    }
+
+    // Find the user by email
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "User not found",
+      });
+    }
+
+    // Update isAccountDeactivate flag
+    user.isAccountDeactivate = true;
+    await user.save();
+
+    res.status(httpStatus.OK).json({
+      message: "Account deactivated successfully",
+    });
+  } catch (error) {
+    console.error("Error in deactivateAccount:", error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "An error occurred while deactivating the account",
+    });
+  }
+};
 
 
 
@@ -413,6 +486,7 @@ module.exports = {
     resetPassword,
     forgotPassword,
     changePassword,
-    logoutHandler
+    logoutHandler,
+    deactivateAccount
     
 }

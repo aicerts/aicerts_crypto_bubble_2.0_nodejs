@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  isAccountDeactivate:{
+    type: Boolean,
+      default: false, // Defaults to false for all new users
+
+  },
   watchlists: {
     type: [watchlistSchema],  // Array of watchlists
     default: [],  // Default value is an empty array if no watchlists

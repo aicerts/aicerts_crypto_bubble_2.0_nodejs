@@ -1,6 +1,6 @@
 const express = require("express");
 const cryptoController = require("../controllers/crypto.controller");
-const { signup, verifyOtp, setPassword, login, forgotPassword, resetPassword, changePassword, logoutHandler } = require("../controllers/user");
+const { signup, verifyOtp, setPassword, login, forgotPassword, resetPassword, changePassword, logoutHandler, deactivateAccount } = require("../controllers/user");
 const { updateWishlist, deleteWishlistSymbol, getUserWishlist } = require("../controllers/watchlist");
 
 const router = express.Router();
@@ -34,6 +34,7 @@ router.get("/logout",logoutHandler)
 router.post("/updateWishlist",updateWishlist)
 router.delete("/deleteWishlist",deleteWishlistSymbol)
 router.get("/getUserWishlist", getUserWishlist)
+router.post("/deactivate-account",deactivateAccount)
 
 
 

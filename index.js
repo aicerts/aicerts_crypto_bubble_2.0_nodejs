@@ -106,7 +106,7 @@ app.get("/", isAuthenticated, async (req, res) => {
     
       console.log("Authentication successfull...")
      
-    res.redirect(`${process.env.CRYPTO_FRONTEND}/?token=${responseData.code}&userEmail=${responseData.data.Useremail}` )
+    res.redirect(`${process.env.CRYPTO_FRONTEND}/?token=${JWTToken}&userEmail=${user.email}` )
     } else {
       res.status(403).json({
         status: 403,
