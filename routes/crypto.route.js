@@ -34,7 +34,7 @@ router.get("/logout",logoutHandler)
 router.post("/updateWishlist",updateWishlist)
 router.delete("/deleteWishlist",deleteWishlistSymbol)
 router.get("/getUserWishlist", getUserWishlist)
-router.post("/deactivate-account",deactivateAccount)
+router.post("/delete-account",deactivateAccount)
 
 
 

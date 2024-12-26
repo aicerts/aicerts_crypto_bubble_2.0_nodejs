@@ -26,7 +26,7 @@ const linkedinAuthCallback = passport.authenticate('linkedin', {
 
 const linkedinAuthRedirect = (req, res) => {
   // Successful authentication, redirect home or wherever you want.
-  res.redirect('/');
+  res.redirect('/api/');
 };
 
 const linkedinStrategy = new LinkedInStrategy(
