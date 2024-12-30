@@ -68,7 +68,7 @@ passport.deserializeUser(async (id, done) => {
 
 // Initiates Google OAuth login
 const googleAuth = (req, res, next) => {
-  const sourceApp = req.query.sourceApp; // Extract sourceApp from the query
+  const sourceApp = req.query.sourceApp || "default"
 
   passport.authenticate("google", {
     scope: ["profile", "email"],

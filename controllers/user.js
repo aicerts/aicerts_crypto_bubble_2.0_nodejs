@@ -43,7 +43,7 @@ const signup = catchAsync(async (req, res, next) => {
     );
 
     // Send OTP email
-    await sendEmail(email, otp, firstname);
+    await sendEmail(email, otp, firstname , lastname, "otp");
     res.status(httpStatus.OK).json({ message: "OTP sent to email" });
 
   } catch (error) {

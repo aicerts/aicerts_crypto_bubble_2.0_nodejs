@@ -17,62 +17,19 @@ const { isAuthenticated } = require("./middlewares/authMiddleware");
 const  generateJwtToken  = require("./utils/authUtil");
 const dotenv=require("dotenv");
 const { linkedinAuth, linkedinAuthCallback, linkedinAuthRedirect, linkedinStrategy } = require("./utils/linkedinStrategy");
+const setupMiddleware = require("./middlewares/setupMiddleware");
 
 
 const app = express();
 dotenv.config();
+setupMiddleware(app)
 
 app.use(morgan.successHandler);
 app.use(morgan.errorHandler);
-
-
-// passport.use(linkedinStrategy);
-
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'default_secret', // Provide a fallback value if SESSION_SECRET is undefined
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production', // Send cookie only over HTTPS in production
-    httpOnly: true, // Prevent client-side access to the cookie
-    sameSite: 'lax', // Use 'lax' or 'none' depending on your app's requirements
-    maxAge: 1000 * 60 * 60 * 24, // Cookie expiry time
-  },
-}));
-
-
-
-
-
-// app.use(helmet());
-
-app.use(express.json());
-// app.use(express.urlencoded({ extended: true }));
-
 app.use(mongoSanitize());
-
-// app.use(compression())
-
-// enable cors
-app.use(cors());
-app.options("*", cors());
-// Health check route
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "Healthy", message: "Server is running properly." });
   });
-
-  // app.use(session({
-  //   secret: process.env.SESSION_SECRET || 'your-secret-key',
-  //   resave: false,
-  //   saveUninitialized: true,
-  //   cookie: { secure: false } // For development, set `secure` to false, but set to true in production with HTTPS
-  // }));
-
-
-
-  app.use(passport.initialize());
-  app.use(passport.session());
-
 
   passport.use(googleStrategy);
   passport.use(linkedinStrategy)
